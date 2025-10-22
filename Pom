@@ -1,0 +1,38 @@
+local screen = Instance.new("ScreenGui")
+screen.Name = "POM_GUI"
+screen.ResetOnSpawn = false
+screen.Parent = playerGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 250, 0, 220)
+frame.Position = UDim2.new(0, 20, 0, 100)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BackgroundTransparency = 0.2
+frame.Parent = screen
+
+local title = Instance.new("TextLabel")
+title.Text = "POM"
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 22
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.BackgroundTransparency = 1
+title.Parent = frame
+
+-- Crear los 5 botones
+local opciones = {"TR1 - Anti AFK", "TR2 - Auto TP", "TR3 - Inmune (5h)", "TR4 - Teleport Portales", "TR5 - Continuar Acción"}
+for i, nombre in ipairs(opciones) do
+	local boton = Instance.new("TextButton")
+	boton.Size = UDim2.new(1, -10, 0, 30)
+	boton.Position = UDim2.new(0, 5, 0, 30 + (i * 35))
+	boton.Text = nombre
+	boton.Font = Enum.Font.SourceSans
+	boton.TextSize = 18
+	boton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+	boton.TextColor3 = Color3.new(1,1,1)
+	boton.Parent = frame
+	
+	boton.MouseButton1Click:Connect(function()
+		print("Activaste:", nombre)
+	end)
+end
