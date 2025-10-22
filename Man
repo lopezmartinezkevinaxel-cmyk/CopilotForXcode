@@ -1,0 +1,281 @@
+-- AdminHub LocalScript (StarterGui)
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local CollectionService = game:GetService("CollectionService")
+
+local player = Players.LocalPlayer
+
+-- Esperar remotes
+local remFolder = ReplicatedStorage:WaitForChild("AdminHubRemotes")
+local SetGod = remFolder:WaitForChild("SetGodMode")
+local Rebirth = remFolder:WaitForChild("RequestRebirth")
+local AutoTrain = remFolder:WaitForChild("RequestAutoTrain")
+local SetSpeed = remFolder:WaitForChild("SetAdminSpeed")
+
+-- Helper visual / funciones
+local function make(parent, className, props)
+    local obj = Instance.new(className)
+    if props then
+        for k,v in pairs(props) do obj[k] = v end
+    end
+    obj.Parent = parent
+    return obj
+end
+
+-- Crear ScreenGui y Hub si no existe (evita duplicados)
+local screenGui = script.Parent
+if not screenGui:IsA("ScreenGui") then
+    warn("Coloca este LocalScript dentro de StarterGui -> ScreenGui")
+end
+
+-- Hub principal
+local Hub = make(screenGui, "Frame", {
+    Name = "Hub",
+    Size = UDim2.new(0, 300, 0, 300),
+    AnchorPoint = Vector2.new(0.5,0.5),
+    Position = UDim2.new(0.5, 0.5, 0.5, 0),
+    BackgroundTransparency = 1,
+})
+local Panel = make(Hub, "Frame", {
+    Name = "Panel",
+    Size = UDim2.new(0, 300, 0, 300),
+    BackgroundTransparency = 1,
+})
+-- Borde negro
+local stroke = make(Panel, "UIStroke", {Color = Color3.fromRGB(0,0,0), Thickness = 2})
+
+-- Header (arrastrar + toggle)
+local Header = make(Panel, "TextButton", {
+    Name = "Header",
+    Size = UDim2.new(1,0,0,36),
+    Position = UDim2.new(0,0,0,0),
+    BackgroundTransparency = 1,
+    Text = "HUB  ▼",
+    TextColor3 = Color3.fromRGB(255,255,255),
+    Font = Enum.Font.SourceSansBold,
+    TextSize = 18,
+})
+-- Content
+local Content = make(Panel, "Frame", {
+    Name = "Content",
+    Size = UDim2.new(1,0,1,-36),
+    Position = UDim2.new(0,0,0,36),
+    BackgroundTransparency = 1,
+})
+local layout = make(Content, "UIListLayout", {Padding = UDim.new(0,8), SortOrder = Enum.SortOrder.LayoutOrder})
+Content.Padding = UDim.new(0,6)
+
+-- Crear 7 botones
+local names = {
+    "Opt1_God", "Opt2_ToPortals", "Opt3_ToEggs",
+    "Opt4_AFK", "Opt5_AutoRebirth", "Opt6_AutoTrain", "Opt7_AdminSpeed"
+}
+local buttons = {}
+
+for i,name in ipairs(names) do
+    local btn = make(Content, "TextButton", {
+        Name = name,
+        Size = UDim2.new(1, -12, 0, 40),
+        BackgroundColor3 = Color3.fromRGB(0,120,255),
+        TextColor3 = Color3.fromRGB(255,255,255),
+        Text = name,
+        BorderSizePixel = 0,
+        AutoButtonColor = true,
+        AnchorPoint = Vector2.new(0,0),
+        Position = UDim2.new(0, 6, 0, 0),
+        Font = Enum.Font.SourceSans,
+        TextSize = 16,
+    })
+    buttons[name] = btn
+end
+
+-- AFK label (invisible por defecto)
+local afkLabel = make(Panel, "TextLabel", {
+    Name = "AFKLabel",
+    Size = UDim2.new(0,200,0,28),
+    Position = UDim2.new(0,10,1,-40),
+    BackgroundTransparency = 0.6,
+    BackgroundColor3 = Color3.fromRGB(0,0,0),
+    TextColor3 = Color3.fromRGB(255,255,255),
+    Text = "AFK: 0s",
+    Visible = false,
+    AnchorPoint = Vector2.new(0,1),
+    Font = Enum.Font.SourceSans,
+    TextSize = 16,
+})
+
+-- DRAGGING
+local dragging = false
+local dragStart
+local startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    Hub.Position = UDim2.new(0, startPos.X + delta.X, 0, startPos.Y + delta.Y)
+end
+
+Header.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        local pos = Hub.AbsolutePosition
+        startPos = Vector2.new(pos.X, pos.Y)
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        update(input)
+    end
+end)
+
+-- COLLAPSIBLE
+local collapsed = false
+local expandedSize = UDim2.new(0,300,0,300)
+local collapsedSize = UDim2.new(0,160,0,36)
+local TweenService = game:GetService("TweenService")
+local tweenInfo = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+local function togglePanel()
+    collapsed = not collapsed
+    local target = collapsed and collapsedSize or expandedSize
+    TweenService:Create(Panel, tweenInfo, {Size = target}):Play()
+    Header.Text = collapsed and "HUB  ▲" or "HUB  ▼"
+end
+
+Header.MouseButton1Click:Connect(function()
+    -- Si deseas distinguir drag vs click, puedes mejorar. Aquí: toggle en click.
+    togglePanel()
+end)
+
+-- ======================
+-- Funcionalidad de las 7 opciones
+-- ======================
+
+-- 1) God Mode (envía al servidor)
+local godEnabled = false
+buttons.Opt1_God.MouseButton1Click:Connect(function()
+    godEnabled = not godEnabled
+    SetGod:FireServer(godEnabled)
+    buttons.Opt1_God.Text = godEnabled and "Modo Inmortal: ON" or "Modo Inmortal: OFF"
+end)
+
+-- 2) Teleport a portals (se teleporta al primer portal encontrado; si pulsas otra vez va al siguiente)
+local portalIndex = 1
+buttons.Opt2_ToPortals.MouseButton1Click:Connect(function()
+    local portals = CollectionService:GetTagged("Portal")
+    if #portals == 0 then
+        buttons.Opt2_ToPortals.Text = "No hay Portales"
+        return
+    end
+    portalIndex = portalIndex + 1
+    if portalIndex > #portals then portalIndex = 1 end
+    local target = portals[portalIndex]
+    if target and target:IsA("BasePart") and player.Character and player.Character.PrimaryPart then
+        player.Character:SetPrimaryPartCFrame(target.CFrame + Vector3.new(0,3,0))
+        buttons.Opt2_ToPortals.Text = "Portal: " .. tostring(portalIndex)
+    else
+        -- Si no es BasePart, intenta buscar PrimaryPart en parent
+        local prim = target:FindFirstChildWhichIsA and target:FindFirstChildWhichIsA("BasePart")
+        if prim and player.Character and player.Character.PrimaryPart then
+            player.Character:SetPrimaryPartCFrame(prim.CFrame + Vector3.new(0,3,0))
+            buttons.Opt2_ToPortals.Text = "Portal: " .. tostring(portalIndex)
+        else
+            buttons.Opt2_ToPortals.Text = "Portal inválido"
+        end
+    end
+end)
+
+-- 3) Teleport a TODOS los huevos de mascotas (recorre secuencialmente con delay configurable)
+local tpEggsRunning = false
+buttons.Opt3_ToEggs.MouseButton1Click:Connect(function()
+    tpEggsRunning = not tpEggsRunning
+    buttons.Opt3_ToEggs.Text = tpEggsRunning and "TP Huevos: ON" or "TP Huevos: OFF"
+    if tpEggsRunning then
+        spawn(function()
+            local eggs = CollectionService:GetTagged("PetEgg")
+            local idx = 1
+            while tpEggsRunning do
+                eggs = CollectionService:GetTagged("PetEgg") -- refresca lista
+                if #eggs == 0 then
+                    buttons.Opt3_ToEggs.Text = "No hay Huevos"
+                    tpEggsRunning = false
+                    break
+                end
+                local target = eggs[idx]
+                if target and target:IsA("BasePart") and player.Character and player.Character.PrimaryPart then
+                    player.Character:SetPrimaryPartCFrame(target.CFrame + Vector3.new(0,3,0))
+                    buttons.Opt3_ToEggs.Text = "Huevos: " .. tostring(idx) .. "/" .. tostring(#eggs)
+                end
+                idx = idx + 1
+                if idx > #eggs then idx = 1 end
+                wait(2) -- espera entre teleports (ajustable)
+            end
+        end)
+    end
+end)
+
+-- 4) Anti-AFK: muestra el tiempo desde la última entrada del usuario
+local lastInput = tick()
+UserInputService.InputBegan:Connect(function()
+    lastInput = tick()
+end)
+
+buttons.Opt4_AFK.MouseButton1Click:Connect(function()
+    afkLabel.Visible = not afkLabel.Visible
+    buttons.Opt4_AFK.Text = afkLabel.Visible and "AFK: Visible" or "AFK: Oculto"
+end)
+
+spawn(function()
+    while true do
+        wait(1)
+        local idle = math.floor(tick() - lastInput)
+        afkLabel.Text = "AFK: " .. tostring(idle) .. "s"
+    end
+end)
+
+-- 5) Auto Rebirth: solicita rebirth al servidor periódicamente (servidor debe implementar)
+local autoRebirth = false
+buttons.Opt5_AutoRebirth.MouseButton1Click:Connect(function()
+    autoRebirth = not autoRebirth
+    buttons.Opt5_AutoRebirth.Text = autoRebirth and "Auto Rebirth: ON" or "Auto Rebirth: OFF"
+    if autoRebirth then
+        spawn(function()
+            while autoRebirth do
+                wait(5) -- intervalo, ajustable
+                Rebirth:FireServer()
+            end
+        end)
+    end
+end)
+
+-- 6) Auto Train: solicita al servidor que empiece/detenga auto-train
+local autoTrain = false
+buttons.Opt6_AutoTrain.MouseButton1Click:Connect(function()
+    autoTrain = not autoTrain
+    buttons.Opt6_AutoTrain.Text = autoTrain and "Auto Train: ON" or "Auto Train: OFF"
+    -- xp per tick y tick interval son ejemplos; servidor debe aplicar la lógica real
+    AutoTrain:FireServer(autoTrain, 10, 2)
+end)
+
+-- 7) Auto cliente rápido (admin speed vía servidor validado)
+buttons.Opt7_AdminSpeed.MouseButton1Click:Connect(function()
+    -- alterna entre velocidad default y rápida
+    local currentSpeed = player.Character and (player.Character:FindFirstChildOfClass("Humanoid") and player.Character:FindFirstChildOfClass("Humanoid").WalkSpeed or 16) or 16
+    if currentSpeed <= 16 then
+        SetSpeed:FireServer(100) -- solicita 100 (servidor clampea)
+        buttons.Opt7_AdminSpeed.Text = "Velocidad: 100"
+    else
+        SetSpeed:FireServer(16)
+        buttons.Opt7_AdminSpeed.Text = "Velocidad: 16"
+    end
+end)
+
+-- Mensaje final
+print("[AdminHub Local] GUI cargada")
